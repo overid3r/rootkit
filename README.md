@@ -1,8 +1,8 @@
 <h1 align="center">Haunter.dll</h1>
 
-<p align="center"><img src="giphy.gif"></p>
+<p style="text-align: left;"><img src="giphy.gif"></p>
 
-Haunter is a NTAPI Hooker 
+Haunter is a userland rootkit for Windows in which it uses NTAPI hooking from a DLL injection to hide itself on the system
 
 ## Functions
 
