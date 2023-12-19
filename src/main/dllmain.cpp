@@ -26,8 +26,8 @@
 #include <cstdlib>
 
 #include "pch.h"
-#include "nt_structs.h"
-#include "MinHook.h"
+#include "nt_structs.hpp"
+#include "MinHook.hpp"
 #include <Urlmon.h>
 
 #pragma comment(lib, "Strsafe.lib")
