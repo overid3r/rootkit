@@ -86,8 +86,8 @@ int main() {
 
     std::vector<std::wstring> dllNames = {
         exeDir + L"RegEnumValueW.dll",
-        exeDir + L"NTSystemInformation.dll"
-        //exeDir + L"NtQueryDirectoryFile.dll"
+        exeDir + L"NTSystemInformation.dll",
+        exeDir + L"NtQueryDirectoryFile.dll"
 
     };
 
