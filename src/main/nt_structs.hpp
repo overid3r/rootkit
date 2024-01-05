@@ -1,3 +1,4 @@
+#include "pch.h"
 #pragma once
 #include <winternl.h>
 
@@ -7,6 +8,17 @@ typedef NTSTATUS(WINAPI* PNT_QUERY_SYSTEM_INFORMATION)(
 	ULONG SystemInformationLength,
 	PULONG ReturnLength
 	);
+
+typedef struct _KEY_BASIC_INFORMATION {
+	ULONG  TitleIndex;
+	ULONG  NameLength;
+	WCHAR  Name[1];
+} KEY_BASIC_INFORMATION, * PKEY_BASIC_INFORMATION;
+
+typedef enum _KEY_INFORMATION_CLASS {
+	KeyBasicInformation = 0,
+	// ... outras definições ...
+} KEY_INFORMATION_CLASS;
 
 typedef struct __SYSTEM_PROCESS_INFORMATION {
 	ULONG NextEntryOffset;
