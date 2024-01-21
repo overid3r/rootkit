@@ -3,7 +3,7 @@
 #include <Windows.h>
 #include <winternl.h>
 #include <ntstatus.h>
-#include "MinHook.h"
+#include "MinHook.hpp"
 #include "config.hpp"
 
 #pragma comment(lib, "libMinHook.x64.lib")
