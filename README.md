@@ -7,7 +7,7 @@ Haunter is a userland rootkit for Windows in which it uses NTAPI hooking from a 
 ## Functions
 
 * Hide Processes
-* Hide Registers
+* Hide Services
 * Hide Directory
 
 ## Who to use?
