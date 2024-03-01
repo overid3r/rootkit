@@ -12,7 +12,7 @@ Haunter is a userland rootkit for Windows in which it uses NTAPI hooking from a 
 
 ## Who to use?
 
-rename your evil process to haunter_xxx.exe and your evil folders to haunter_<pathname> and run the installer as administrator
+rename your evil process to haunter_xxx.exe and your evil folders to haunter_xxxx and run the installer as administrator
 
 
 
